@@ -9,7 +9,7 @@ services:
     container_name: rider_postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: rider_user
       POSTGRES_PASSWORD: rider_pass
@@ -30,7 +30,7 @@ services:
     container_name: rider_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6378:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
