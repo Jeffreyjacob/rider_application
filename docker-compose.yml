@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL + PostGIS ────────────────────────────────────
+  # Primary database for all app data.
+  # PostGIS adds geospatial support (finding nearby drivers, distance calculations).
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: rider_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rider_user
+      POSTGRES_PASSWORD: rider_pass
+      POSTGRES_DB: rider_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rider_user -d rider_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────────────
+  # Multi-purpose: BullMQ job queue, caching, pub/sub for
+  # real-time location, and distributed locks.
+  redis:
+    image: redis:7-alpine
+    container_name: rider_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Loki ────────────────────────────────────────────────────
+  # Log aggregation — stores all your app logs in a searchable DB.
+  # Your Pino logger sends logs here via pino-loki transport.
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: rider_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # ─── Grafana ─────────────────────────────────────────────────
+  # Visual dashboard for logs, metrics, and alerts.
+  # Connects to Loki as a data source to search/view logs.
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: rider_grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+
+volumes:
+  postgres_data:
+  redis_data:
+  loki_data:
+  grafana_data:

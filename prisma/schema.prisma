@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+enum RideStatus {
+  REQUESTED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id     String   @id @default(uuid())
+  email  String   @unique
+  password  String?
+  phone     String?   @unique
+  fullName   String
+  emailverified   Boolean   @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  driver    Driver?
+  refreshTokens     RefreshToken[]
+  otpVerifications   EmailOtpverification[]
+  resetTokens        PasswordResetToken[]
+  ridesAsRider       Ride[]  @relation("RiderRides")
+}
+
+model Driver {
+  id      String   @id  @default(uuid())
+  userId  String   @unique
+  user    User     @relation(fields: [userId],references: [id])
+  licenseNo    String   @unique
+  vehiclePlate    String   @unique
+  isOnline        Boolean   @default(false)
+  rating          Float     @default(5.0)
+  createdAt       DateTime   @default(now())
+
+  rideAsDriver     Ride[]    @relation("DriverRides")
+}
+
+model RefreshToken {
+  id     String @id  @default(uuid())
+  userId   String 
+  user     User    @relation(fields: [userId],references: [id])
+  tokeHash  String  @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model EmailOtpverification {
+  id   String  @id  @default(uuid())
+  userId    String 
+  user    User   @relation(fields: [userId],references: [id])
+  otpHash  String
+  expiresAt  DateTime 
+  verifiedAt   DateTime?
+  attempts     Int @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id   String   @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId],references: [id])
+  tokenHash    String  @unique
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Ride {
+  id     String  @id @default(uuid())
+  riderId   String
+  driverId  String?
+  status    RideStatus  @default(REQUESTED)
+  pickupLat      Float
+  pickupLng      Float
+  dropoffLat     Float
+  dropoffLng     Float
+  distanceKm     Float?
+  requestedAt    DateTime  @default(now())
+  acceptedAt     DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  
+  rider      User  @relation("RiderRides",fields: [riderId],references: [id])
+  driver     Driver?  @relation("DriverRides",fields: [driverId],references: [id])
+}
