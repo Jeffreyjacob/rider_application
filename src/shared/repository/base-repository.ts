@@ -65,9 +65,7 @@ type PrismaDelegate<T> = {
     cursor?: Prisma.Args<T, "findMany">["cursor"];
   }): Promise<any[]>;
 
-  count(args?: {
-    where?: Prisma.Args<T, "count">["where"];
-  }): Promise<any>;
+  count(args?: { where?: Prisma.Args<T, "count">["where"] }): Promise<any>;
 
   aggregate(args?: {
     where?: Prisma.Args<T, "aggregate">["where"];
@@ -91,9 +89,7 @@ type PrismaDelegate<T> = {
     select?: Prisma.Args<T, "update">["select"];
   }): Promise<any>;
 
-  delete(args: {
-    where: Prisma.Args<T, "delete">["where"];
-  }): Promise<any>;
+  delete(args: { where: Prisma.Args<T, "delete">["where"] }): Promise<any>;
 
   deleteMany(args: {
     where: Prisma.Args<T, "deleteMany">["where"];
@@ -117,43 +113,6 @@ type PrismaDelegate<T> = {
   }): Promise<any>;
 };
 
-/**
- * 🧠 WHY A BASE REPOSITORY?
- *
- * Without this, every model repository would repeat the same code:
- *
- *   class UserRepository {
- *     async findById(id: string) { return prisma.user.findUnique({ where: { id } }); }
- *     async findAll() { return prisma.user.findMany(); }
- *     async create(data) { return prisma.user.create({ data }); }
- *     async update(id, data) { return prisma.user.update({ where: { id }, data }); }
- *     async delete(id) { return prisma.user.delete({ where: { id } }); }
- *   }
- *
- *   class RideRepository {
- *     async findById(id: string) { return prisma.ride.findUnique({ where: { id } }); }
- *     async findAll() { return prisma.ride.findMany(); }
- *     ... // exact same methods, just different model name
- *   }
- *
- * BaseRepository eliminates that repetition. Each model repository
- * just extends BaseRepository and gets all CRUD operations for free.
- * You only write model-specific methods (like "findNearbyDrivers").
- *
- * ─── Design Pattern: Repository Pattern ─────────────────────
- *
- * Your route/controller never touches Prisma directly.
- * Instead: Route → Service → Repository → Prisma
- *
- * Why? Separation of concerns.
- * - Route: handles HTTP (request/response)
- * - Service: business logic ("can this driver accept this ride?")
- * - Repository: database queries ("find all available drivers near this point")
- * - Prisma: SQL generation
- *
- * This makes testing easier too — you can mock the repository
- * without needing a real database.
- */
 export abstract class BaseRepository<TDelegate, TResult> {
   constructor(protected readonly model: PrismaDelegate<TDelegate>) {}
 
@@ -167,8 +126,6 @@ export abstract class BaseRepository<TDelegate, TResult> {
   protected encodeCursor(value: unknown): string {
     return Buffer.from(String(value)).toString("base64url");
   }
-
-  // ─── Basic CRUD ─────────────────────────────────────────
 
   async findUnique(args: {
     where: Prisma.Args<TDelegate, "findUnique">["where"];
@@ -271,24 +228,6 @@ export abstract class BaseRepository<TDelegate, TResult> {
     return this.model.aggregate(args);
   }
 
-  // ─── Offset Pagination ──────────────────────────────────
-  /**
-   * 🧠 OFFSET PAGINATION — like flipping pages in a book:
-   *
-   * Page 1 → records 1-20
-   * Page 2 → records 21-40
-   * Page 3 → records 41-60
-   *
-   * ✅ Simple to implement and understand
-   * ✅ "Go to page 5" works instantly
-   *
-   * ❌ Problem: If someone inserts a record while you're on page 2,
-   *    your page 2 now shows a different set of results.
-   *    (Like a page of a book being rewritten while you read it.)
-   *
-   * Use when: total count matters, pages are small, data doesn't
-   * shift much between requests.
-   */
   async findManyWithOffsetPagination(args: {
     where?: Prisma.Args<TDelegate, "findMany">["where"];
     include?: Prisma.Args<TDelegate, "findMany">["include"];
@@ -329,25 +268,6 @@ export abstract class BaseRepository<TDelegate, TResult> {
     };
   }
 
-  // ─── Cursor Pagination ──────────────────────────────────
-  /**
-   * 🧠 CURSOR PAGINATION — like bookmarks in a book:
-   *
-   * Instead of "page 3", you say "give me 20 records after this bookmark."
-   *
-   * First request:   no cursor → gets records 1-20, returns cursor "20"
-   * Second request:  cursor "20" → gets records 21-40, returns cursor "40"
-   * Third request:   cursor "40" → gets records 41-60, returns cursor "60"
-   *
-   * ✅ No data shifting — cursor points to exact position
-   * ✅ Better for infinite scroll (Instagram feed, Twitter timeline)
-   * ✅ Works well with large datasets
-   *
-   * ❌ Can't jump to "page 5" directly
-   * ❌ Slightly more complex to implement
-   *
-   * Use when: infinite scroll, real-time feeds, large datasets.
-   */
   async findManyWithCursorPagination(args: {
     where?: Prisma.Args<TDelegate, "findMany">["where"];
     include?: Prisma.Args<TDelegate, "findMany">["include"];
@@ -366,10 +286,6 @@ export abstract class BaseRepository<TDelegate, TResult> {
       ? this.decodedCursor(args.cursor)
       : undefined;
 
-    // 🧠 WHY take + 1?
-    // We fetch ONE EXTRA record to know if there's a next page.
-    // If we get 21 records when we asked for 20, there's a next page.
-    // That extra record is used to detect "hasMore" — then we trim it off.
     const [data, count] = await Promise.all([
       this.model.findMany({
         where: args.where,
