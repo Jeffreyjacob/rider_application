@@ -150,10 +150,20 @@ export class AuthService {
     const isMatch = await this.compareHash(data.code, emailOtp.otpHash);
 
     if (isMatch) {
-      await this.emailVerificationRepo.update({
-        where: { id: emailOtp.id },
-        data: { verifiedAt: new Date() },
+      await prisma.$transaction(async (tx) => {
+        await tx.emailOtpverification.update({
+          where: { id: emailOtp.id },
+          data: { verifiedAt: new Date() },
+        });
+
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            emailverified: true,
+          },
+        });
       });
+
       await redis.del(`otp_lockout:${user.id}`);
 
       return {

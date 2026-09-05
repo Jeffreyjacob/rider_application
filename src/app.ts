@@ -16,6 +16,11 @@ class App {
   public readonly express: Application;
   constructor() {
     this.express = express();
+    this.setSecurutyMiddlewares();
+    this.setParsingMiddlewares();
+    this.setLoggingMiddlewares();
+    this.setRouteMiddleware();
+    this.setErrorMiddleware();
   }
 
   setSecurutyMiddlewares() {
@@ -33,6 +38,7 @@ class App {
   }
 
   setParsingMiddlewares() {
+    this.express.use(express.json());
     this.express.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.express.set("trust proxy", 1);
     this.express.use(cookieParser());

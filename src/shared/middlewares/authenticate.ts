@@ -3,6 +3,7 @@ import { NotFoundError, UnauthorizedError } from "../errors";
 import { verifyAccessToken } from "../utils/tokenUtils";
 import { driverRepo, userRepo } from "../../container";
 import { redis } from "../../config/redis";
+import { env } from "../../config/env";
 
 export const authenticate = async (
   req: Request,
