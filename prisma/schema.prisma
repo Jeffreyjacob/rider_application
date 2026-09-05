@@ -28,6 +28,8 @@ model User {
   phone     String?   @unique
   fullName   String
   emailverified   Boolean   @default(false)
+  lastLoginAt     DateTime?
+  isActive        Boolean  @default(true)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 

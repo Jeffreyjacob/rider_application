@@ -1,4 +1,5 @@
 import { Logger } from "pino";
+import { Driver } from "../generated/prisma/client";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -8,6 +9,6 @@ declare module "express-serve-static-core" {
       userId: string;
       email: string;
     };
-    role: "driver" | "rider";
+    driver: Driver;
   }
 }

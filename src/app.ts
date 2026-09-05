@@ -10,6 +10,7 @@ import { logger } from "./config/logger";
 import { nanoid } from "nanoid";
 import { errorHandler } from "./shared/middlewares/error-handler";
 import { NotFoundMiddleware } from "./shared/middlewares/not-found-handler";
+import authRoutes from "./modules/authentication/auth.routes";
 
 class App {
   public readonly express: Application;
@@ -60,7 +61,9 @@ class App {
     });
   }
 
-  setRouteMiddleware() {}
+  setRouteMiddleware() {
+    this.express.use("/api/v1/auth", authRoutes);
+  }
   setErrorMiddleware() {
     this.express.use(NotFoundMiddleware);
     this.express.use(errorHandler);

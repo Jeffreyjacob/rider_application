@@ -217,6 +217,15 @@ export abstract class BaseRepository<TDelegate, TResult> {
     return this.model.count({ where });
   }
 
+  async exist({
+    where,
+  }: {
+    where: Prisma.Args<TDelegate, "findFirst">["where"];
+  }): Promise<boolean> {
+    const result = await this.model.findFirst({ where });
+    return result !== null;
+  }
+
   async aggregate(args: {
     where?: Prisma.Args<TDelegate, "aggregate">["where"];
     _count?: boolean | object;

@@ -1,5 +1,6 @@
 import { prisma } from "../../config/databse";
 import {
+  Driver,
   EmailOtpverification,
   PasswordResetToken,
   Prisma,
@@ -205,6 +206,52 @@ export class RefreshTokenRepostory extends BaseRepository<
         revokedAt: null,
       },
       data: { revokedAt: new Date() },
+    });
+  }
+}
+
+export class DriverRepository extends BaseRepository<
+  Prisma.DriverDelegate,
+  Driver
+> {
+  constructor() {
+    super(prisma.driver);
+  }
+
+  async findDriverById(id: string): Promise<Driver | null> {
+    return this.findFirst({
+      where: { id },
+    });
+  }
+
+  async findDriverByUserId(userId: string): Promise<Driver | null> {
+    return this.findUnique({
+      where: { userId },
+    });
+  }
+
+  async createDriver(
+    userId: string,
+    data: { vehiclePlate: string; licenseNo: string }
+  ): Promise<Driver> {
+    return this.create({
+      data: {
+        userId,
+        vehiclePlate: data.vehiclePlate,
+        licenseNo: data.licenseNo,
+      },
+    });
+  }
+
+  async updateDriverOnlineStatus(
+    userId: string,
+    status: boolean
+  ): Promise<Driver | null> {
+    return this.update({
+      where: {
+        userId,
+      },
+      data: { isOnline: status },
     });
   }
 }
