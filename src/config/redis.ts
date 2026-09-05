@@ -20,7 +20,7 @@ const redis = new Redis(env.REDIS_URL, {
   lazyConnect: true,
   commandTimeout: 5000,
   retryStrategy,
-  enableOfflineQueue: false,
+  enableOfflineQueue: true,
   keepAlive: 30000,
   connectTimeout: 5000,
 });

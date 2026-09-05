@@ -5,25 +5,36 @@ import {
   authenticate,
   requireDriver,
 } from "../../shared/middlewares/authenticate";
+import {
+  authRateLimit,
+  loginRateLimit,
+} from "../../shared/middlewares/rate-limit";
 
 const router = Router();
 
 router.post(
   "/create",
+  authRateLimit(),
   AsyncHandler(authController.registerUser.bind(authController))
 );
 
 router.post(
   "/verify-email",
+  authRateLimit(),
   AsyncHandler(authController.verifyEmail.bind(authController))
 );
 
 router.post(
   "/resend-email",
+  authRateLimit(),
   AsyncHandler(authController.resendEmailVerification.bind(authController))
 );
 
-router.post("/login", AsyncHandler(authController.login.bind(authController)));
+router.post(
+  "/login",
+  loginRateLimit(),
+  AsyncHandler(authController.login.bind(authController))
+);
 
 router.post(
   "/refresh",
@@ -32,11 +43,13 @@ router.post(
 
 router.post(
   "/forget-password",
+  authRateLimit(),
   AsyncHandler(authController.forgetPassword.bind(authController))
 );
 
 router.post(
   "/reset-password",
+  authRateLimit(),
   AsyncHandler(authController.resetPassword.bind(authController))
 );
 

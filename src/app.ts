@@ -28,7 +28,7 @@ class App {
         allowedHeaders: ["Auhorization", "Content-Type"],
       })
     );
-    this.express.use(globalRateLimit);
+    this.express.use(globalRateLimit());
     this.express.use(compression());
   }
 

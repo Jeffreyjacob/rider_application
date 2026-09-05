@@ -6,34 +6,36 @@ const hasLoki = !!process.env.LOKI_HOST;
 
 const getTransport = () => {
   if (hasLoki) {
-    return pino.transport({
-      targets: [
-        {
-          target: "pino-loki",
-          level: "info",
-          options: {
-            host: process.env.LOKI_HOST,
-            label: {
-              app: "rider-application",
-              env: env.NODE_ENV,
-            },
-            replaceTimestamp: true,
-            silenceErrors: false,
+    const targets: Array<
+      pino.TransportTargetOptions | pino.TransportPipelineOptions
+    > = [
+      {
+        target: "pino-loki",
+        level: "info",
+        options: {
+          host: process.env.LOKI_HOST,
+          label: {
+            app: "rider-application",
+            env: env.NODE_ENV,
           },
+          replaceTimestamp: true,
+          silenceErrors: false,
         },
-        ...(isDev
-          ? [
-              {
-                target: "pino-pretty",
-                options: {
-                  colorize: true,
-                  translateTime: "SYS:standard",
-                  ignore: "pid,hostname",
-                },
-              },
-            ]
-          : []),
-      ],
+      },
+    ];
+    if (isDev) {
+      targets.push({
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "SYS:standard",
+          ignore: "pid,hostname",
+        },
+      });
+    }
+
+    return pino.transport({
+      targets,
     });
   }
 
@@ -47,7 +49,11 @@ const getTransport = () => {
       },
     });
   }
+
+  return undefined;
 };
+
+const transport = getTransport();
 
 export const logger = pino(
   {
@@ -65,5 +71,5 @@ export const logger = pino(
       env: env.NODE_ENV,
     },
   },
-  getTransport()
+  transport
 );

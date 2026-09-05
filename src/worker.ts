@@ -41,3 +41,5 @@ export async function startWorker() {
     process.exit();
   }
 }
+
+startWorker();
