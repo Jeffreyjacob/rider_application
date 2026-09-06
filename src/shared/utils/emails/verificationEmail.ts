@@ -9,7 +9,7 @@ interface VerifyEmailParams {
  * Escape HTML special characters to prevent XSS (since we're using raw string templates).
  * This is crucial if any input might contain `<`, `>`, `&`, etc.
  */
-const escapeHtml = (str: string): string =>
+export const escapeHtml = (str: string): string =>
   str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export const verifyEmailTemplate = ({

@@ -50,6 +50,8 @@ export async function startServer(): Promise<void> {
       });
     };
 
+    console.log(0.1 + 0.2);
+
     process.on("SIGTERM", () => gracefulShutdowm("SIGTERM"));
     process.on("SIGINT", () => gracefulShutdowm("SIGINT"));
     process.on("uncaughtException", (err) => {

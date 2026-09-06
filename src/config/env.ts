@@ -27,6 +27,10 @@ const envSchema = z.object({
   ALLOWED_ORIGIN: z.string().default("http://localhost:5173,"),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
+  BASE_FAKE_KOBO: z.coerce.number().default(50000),
+  PER_KM_RATE_KOBO: z.coerce.number().default(15000),
+  PER_MINUTE_RATE_KOBO: z.coerce.number().default(3000),
+  AVERAGE_SPEED_KMH: z.coerce.number().default(25),
 });
 
 const parsed = envSchema.safeParse(process.env);
