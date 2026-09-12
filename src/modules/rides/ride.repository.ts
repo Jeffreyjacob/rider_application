@@ -1,5 +1,10 @@
 import { prisma } from "../../config/databse";
-import { Prisma, Ride, RideStatus } from "../../generated/prisma/client";
+import {
+  Prisma,
+  Ride,
+  RideRejection,
+  RideStatus,
+} from "../../generated/prisma/client";
 import { BaseRepository } from "../../shared/repository/base-repository";
 import { ICreateRideInput, IGetRideHistoryInput } from "./ride.validations";
 
@@ -67,6 +72,31 @@ export class RideRepository extends BaseRepository<Prisma.RideDelegate, Ride> {
         status: RideStatus.ACCEPTED,
         driverId,
         acceptedAt: new Date(),
+      },
+    });
+  }
+}
+
+export class RideRejectionRepository extends BaseRepository<
+  Prisma.RideRejectionDelegate,
+  RideRejection
+> {
+  constructor() {
+    super(prisma.rideRejection);
+  }
+
+  async createRideRejection(data: { rideId: string; driverId: string }) {
+    return this.create({
+      data: {
+        ...data,
+      },
+    });
+  }
+
+  async getDriverRideRejections(driverId: string) {
+    return this.findMany({
+      where: {
+        driverId,
       },
     });
   }

@@ -51,6 +51,8 @@ model Driver {
   createdAt       DateTime   @default(now())
 
   rideAsDriver     Ride[]    @relation("DriverRides")
+  rideRejected    RideRejection[]
+  rideRating   Rating?
 }
 
 model RefreshToken {
@@ -115,4 +117,32 @@ model Ride {
   
   rider      User  @relation("RiderRides",fields: [riderId],references: [id])
   driver     Driver?  @relation("DriverRides",fields: [driverId],references: [id])
+
+  driverRejected  RideRejection[]
+  rideRating  Rating?
+}
+
+
+model RideRejection {
+  id   String   @id  @default(uuid())
+  rideId    String 
+  ride      Ride    @relation(fields: [rideId],references: [id])
+  driverId  String
+  driver   Driver  @relation(fields: [driverId],references: [id])
+  rejectedAt   DateTime  @default(now())
+
+  @@unique([rideId,driverId])
+  @@index([rideId])
+}
+
+model Rating {
+  id  String  @id  @default(uuid())
+  rideId   String  @unique
+  ride   Ride    @relation(fields: [rideId],references: [id])
+  driverId   String  @unique
+  driver   Driver   @relation(fields: [driverId],references: [id])
+  riderId  String
+  stars    Int
+  comment  String?
+  createdAt   DateTime  @default(now())
 }

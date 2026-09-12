@@ -36,7 +36,13 @@ export const completeRideSchema = z.object({
   locationLng: z.coerce.number().min(-180).max(180),
 });
 
+export const rateRideSchedma = z.object({
+  stars: z.coerce.number().min(1),
+  comment: z.string().optional(),
+});
+
 export type IEstimateRideInput = z.infer<typeof estimateRideSchema>;
 export type ICreateRideInput = z.infer<typeof createRideSchema>;
 export type IGetRideHistoryInput = z.infer<typeof getRideHistorySchema>;
 export type ICompleteRideInput = z.infer<typeof completeRideSchema>;
+export type IRateRideInput = z.infer<typeof rateRideSchedma>;

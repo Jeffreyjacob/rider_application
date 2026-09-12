@@ -1,5 +1,7 @@
 import { prisma } from "../../config/databse";
+import { env } from "../../config/env";
 import { logger } from "../../config/logger";
+import { eventBus } from "../../events/eventBus";
 import { Ride, RideStatus } from "../../generated/prisma/client";
 import { getEmailQueue } from "../../job/queues/email";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
@@ -17,19 +19,21 @@ import {
   DriverRepository,
   UserRepository,
 } from "../authentication/auth.repository";
-import { RideRepository } from "./ride.repository";
+import { RideRejectionRepository, RideRepository } from "./ride.repository";
 import {
   ICompleteRideInput,
   ICreateRideInput,
   IEstimateRideInput,
   IGetRideHistoryInput,
+  IRateRideInput,
 } from "./ride.validations";
 
 export class RideService {
   constructor(
     private readonly rideRepo: RideRepository,
     private readonly userRepo: UserRepository,
-    private readonly driverRepo: DriverRepository
+    private readonly driverRepo: DriverRepository,
+    private readonly rideRejectionRepo: RideRejectionRepository
   ) {}
 
   async estimateRide(data: IEstimateRideInput) {
@@ -134,12 +138,15 @@ export class RideService {
     return await this.rideRepo.findRideHistory(rider.id, data);
   }
 
-  async acceptRide(id: string, riderId: string, driverId: string) {
-    const rider = await this.userRepo.findUserById(riderId);
+  async acceptRide(id: string, driverId: string) {
+    const ride = await this.rideRepo.findRideById(id);
+    if (!ride) throw new NotFoundError("unable to find ride");
+
+    const rider = await this.userRepo.findUserById(ride.riderId);
     if (!rider) throw new NotFoundError("unable to find user");
 
     const driver = await prisma.driver.findFirst({
-      where: { id },
+      where: { id: driverId },
       include: {
         user: {
           select: {
@@ -152,9 +159,6 @@ export class RideService {
     });
 
     if (!driver) throw new NotFoundError("unable to find driver");
-
-    const ride = await this.rideRepo.findRideById(id);
-    if (!ride) throw new NotFoundError("unable to find ride");
 
     const updatedRide = await this.rideRepo.acceptRide(id, driver.id);
     if (!updatedRide)
@@ -223,7 +227,18 @@ export class RideService {
     const user = await this.userRepo.findUserById(userId);
     if (!user) throw new NotFoundError("unable to find user");
 
-    const findDriver = await this.driverRepo.findDriverByUserId(userId);
+    const findDriver = await prisma.driver.findFirst({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
     if (!findDriver) throw new NotFoundError("unable to find driver");
 
     const ride = await this.rideRepo.findRideById(id);
@@ -274,12 +289,69 @@ export class RideService {
       await emailQueue.add("email", {
         email: rider.email,
         subject: `Ride from ${ride.pickupAddress} to ${ride.dropOffAddress} has been completed `,
-        html: rideCompletedEmailTemplate({}),
+        html: rideCompletedEmailTemplate({
+          riderName: rider.fullName,
+          driverName: findDriver.user.fullName,
+          driverRating: findDriver.rating,
+          pickupLocation: ride.pickupAddress,
+          dropoffLocation: ride.dropOffAddress,
+          distanceKm: ride.distanceKm ?? 0,
+          durationMinutes: duration,
+          finalPrice: String(finalPrice),
+          baseFare: String(env.BASE_FAKE_KOBO),
+          rideDate: ride.requestedAt,
+          rideId: ride.id,
+        }),
       });
     } catch (error: any) {
       logger.warn("unable to queue accept ride email to email queue");
     }
 
     return update;
+  }
+
+  async rejectRide(userId: string, rideId: string) {
+    const driver = await this.driverRepo.findDriverByUserId(userId);
+    if (!driver) throw new NotFoundError("user is not a driver");
+
+    const ride = await this.rideRepo.findRideById(rideId);
+    if (!ride) throw new NotFoundError("unable to find ride");
+
+    const reject = await this.rideRejectionRepo.createRideRejection({
+      rideId,
+      driverId: driver.id,
+    });
+
+    return reject;
+  }
+
+  async rateRide(userId: string, rideId: string, data: IRateRideInput) {
+    const rider = await this.userRepo.findUserById(userId);
+    if (!rider) throw new NotFoundError("unable to user");
+
+    const ride = await this.rideRepo.findRideById(rideId);
+    if (!ride) throw new NotFoundError("unable to find ride");
+
+    if (ride.status !== RideStatus.COMPLETED)
+      throw new BadRequestError(
+        "ride must be completed before you can rate it"
+      );
+
+    const rating = await prisma.rating.create({
+      data: {
+        ...data,
+        driverId: ride.driverId!,
+        rideId,
+        riderId: rider.id,
+      },
+    });
+
+    eventBus.emit("ride.rating", {
+      driverId: ride.driverId!,
+      rideId: ride.id,
+      riderId: userId,
+    });
+
+    return rating;
   }
 }

@@ -11,11 +11,14 @@ import { nanoid } from "nanoid";
 import { errorHandler } from "./shared/middlewares/error-handler";
 import { NotFoundMiddleware } from "./shared/middlewares/not-found-handler";
 import authRoutes from "./modules/authentication/auth.routes";
+import { registerAllListeners } from "./events/listeners";
+import rideRoutes from "./modules/rides/ride.routes";
 
 class App {
   public readonly express: Application;
   constructor() {
     this.express = express();
+    registerAllListeners();
     this.setSecurutyMiddlewares();
     this.setParsingMiddlewares();
     this.setLoggingMiddlewares();
@@ -69,6 +72,7 @@ class App {
 
   setRouteMiddleware() {
     this.express.use("/api/v1/auth", authRoutes);
+    this.express.use("/api/v1/ride", rideRoutes);
   }
   setErrorMiddleware() {
     this.express.use(NotFoundMiddleware);
