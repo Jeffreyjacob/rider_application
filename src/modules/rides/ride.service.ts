@@ -82,6 +82,8 @@ export class RideService {
         dropOffAddress: ride.dropOffAddress,
         pickupAddress: ride.pickupAddress,
         estimatedPrice: ride.estimatedPrice!,
+        pickupLat: ride.pickupLat,
+        pickupLng: ride.pickupLng,
       },
       rider: {
         id: rider.id,
