@@ -1,5 +1,5 @@
-import { ratingListeners } from "./ratingListeners";
+import { rideListeners } from "./rideListeners";
 
 export function registerAllListeners(): void {
-  ratingListeners();
+  rideListeners();
 }

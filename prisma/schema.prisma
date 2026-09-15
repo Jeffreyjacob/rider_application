@@ -120,6 +120,7 @@ model Ride {
 
   driverRejected  RideRejection[]
   rideRating  Rating?
+
 }
 
 

@@ -4,11 +4,13 @@ import { env } from "./config/env";
 import { logger } from "./config/logger";
 import http from "http";
 import { disconnectRedis } from "./config/redis";
+import { initSocket } from "./sockets";
 
 export async function startServer(): Promise<void> {
   try {
     logger.info("...starting server");
     const server = http.createServer(app);
+    initSocket(server);
     await prisma.$connect();
     server.listen(env.PORT, () => {
       logger.info(

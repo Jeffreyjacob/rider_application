@@ -1,9 +1,26 @@
-import { EventEmitter } from "stream";
+import { EventEmitter } from "node:stream";
 import { logger } from "../config/logger";
 
 interface AppEvents {
   "ride.rating": { driverId: string; riderId: string; rideId: string };
-  "ride.requested": { rideId: string; riderId: string };
+  "ride.requested": {
+    ride: {
+      id: string;
+      pickupAddress: string;
+      dropOffAddress: string;
+      estimatedPrice: number;
+      pickupLat: number;
+      pickupLng: number;
+    };
+    rider: {
+      id: string;
+      fullName: string;
+    };
+  };
+  "ride.accepted": {
+    ride: { id: string; riderId: string };
+    driver: { id: string; fullName: string; vehiclePlate: string };
+  };
 }
 
 export class TypedEventBus extends EventEmitter {

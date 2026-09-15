@@ -1,10 +1,15 @@
 import { prisma } from "../../config/databse";
 import { env } from "../../config/env";
 import { logger } from "../../config/logger";
+import { redis } from "../../config/redis";
 import { eventBus } from "../../events/eventBus";
 import { Ride, RideStatus } from "../../generated/prisma/client";
 import { getEmailQueue } from "../../job/queues/email";
-import { BadRequestError, NotFoundError } from "../../shared/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from "../../shared/errors";
 import { OffsetPaginationResponse } from "../../shared/repository/base-repository";
 import { rideCompletedEmailTemplate } from "../../shared/utils/emails/completeRideEmail";
 import { rideCancelledEmailTemplate } from "../../shared/utils/emails/driverCancelEmail";
@@ -70,6 +75,19 @@ export class RideService {
       );
 
     const ride = await this.rideRepo.createRide(rider.id, data);
+
+    eventBus.emit("ride.requested", {
+      ride: {
+        id: ride.id,
+        dropOffAddress: ride.dropOffAddress,
+        pickupAddress: ride.pickupAddress,
+        estimatedPrice: ride.estimatedPrice!,
+      },
+      rider: {
+        id: rider.id,
+        fullName: rider.fullName,
+      },
+    });
     return ride;
   }
 
@@ -106,6 +124,8 @@ export class RideService {
         cancelledAt: new Date(),
       },
     });
+
+    await redis.del(`driver:active_ride:${driver.id}`);
 
     const emailQueue = getEmailQueue();
     try {
@@ -159,12 +179,26 @@ export class RideService {
     });
 
     if (!driver) throw new NotFoundError("unable to find driver");
+    let updatedRide;
+    try {
+      updatedRide = await this.rideRepo.acceptRide(id, driver.id);
+      if (updatedRide.count === 0)
+        throw new BadRequestError(
+          "unable to update ride or ride is no longer available"
+        );
+    } catch (error: any) {
+      if (error.code === "P2002") {
+        throw new ConflictError("You already have an active ride");
+      }
+      throw error;
+    }
 
-    const updatedRide = await this.rideRepo.acceptRide(id, driver.id);
-    if (!updatedRide)
-      throw new BadRequestError(
-        "unable to update ride or ride already accepted by other driver"
-      );
+    await redis.set(
+      `driver:active_ride:${driver.id}`,
+      ride.id,
+      "EX",
+      60 * 60 * 24
+    );
 
     const emailJob = getEmailQueue();
 
@@ -191,6 +225,15 @@ export class RideService {
     } catch (error: any) {
       logger.warn("unable to queue accept ride email to email queue");
     }
+
+    eventBus.emit("ride.accepted", {
+      ride: { id: ride.id, riderId: ride.riderId },
+      driver: {
+        id: driver.id,
+        fullName: driver.user.fullName,
+        vehiclePlate: driver.vehiclePlate,
+      },
+    });
 
     return updatedRide;
   }
@@ -283,6 +326,8 @@ export class RideService {
         finalPrice,
       },
     });
+
+    await redis.del(`driver:active_ride:${findDriver.id}`);
 
     try {
       const emailQueue = getEmailQueue();
