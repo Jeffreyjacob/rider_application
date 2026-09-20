@@ -1,5 +1,6 @@
 import http from "node:http";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9,17 +10,28 @@ import { UnauthorizedError } from "../shared/errors";
 import { verifyAccessToken } from "../shared/utils/tokenUtils";
 import { driverRepo } from "../container";
 import { redis } from "../config/redis";
+import Redis from "ioredis";
+import { env } from "../config/env";
 
 let io: Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
 
-export function initSocket(httpServer: http.Server) {
+export async function initSocket(httpServer: http.Server) {
   io = new Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>(
     httpServer,
     {
       cors: { origin: "*" },
     }
   );
+  const pubClient = new Redis(env.REDIS_URL, {
+    keyPrefix: "pub:",
+    enableOfflineQueue: true,
+    maxRetriesPerRequest: null,
+  });
 
+  const subClient = pubClient.duplicate();
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
   io.use(async (socket, next) => {
     const token =
       (socket.handshake.auth?.token as string | undefined) ??
@@ -68,8 +80,28 @@ export function initSocket(httpServer: http.Server) {
       });
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("Socket disconnected");
+      const driverId = socket.data.driverId;
+      if (!driverId) return;
+
+      const activeRideId = await redis.get(`driver:active_ride:${driverId}`);
+
+      if (!activeRideId) {
+        await redis.zrem("drivers:locations", driverId);
+      }
+
+      setTimeout(async () => {
+        const stillActive = await redis.get(`driver:active_ride:${driverId}`);
+        if (!stillActive) return;
+
+        const io = getIO();
+        const stillConnedted = io.sockets.adapter.rooms.get(
+          `user:${socket.data.userId}`
+        );
+
+        if (stillConnedted) return;
+      });
     });
   });
 

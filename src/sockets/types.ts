@@ -20,6 +20,15 @@ export interface ServerToClientEvents {
     dropOffAddress: string;
     estimatedPrice: number;
   }) => void;
+  "ride.offer": (
+    payload: {
+      id: string;
+      pickupAddress: string;
+      dropOffAddress: string;
+      estimatedPrice: number | null;
+    },
+    callback: (response: { accepted: boolean }) => void
+  ) => void;
 }
 
 export interface ClientToServerEvents {

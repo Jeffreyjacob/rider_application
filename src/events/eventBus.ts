@@ -21,6 +21,21 @@ interface AppEvents {
     ride: { id: string; riderId: string };
     driver: { id: string; fullName: string; vehiclePlate: string };
   };
+  // for learning purpose of sending ride sequentially to driver rather than broad casting it
+  "ride.offer": {
+    ride: {
+      id: string;
+      pickupAddress: string;
+      dropOffAddress: string;
+      estimatedPrice: number;
+      pickupLat: number;
+      pickupLng: number;
+    };
+    rider: {
+      id: string;
+      fullName: string;
+    };
+  };
 }
 
 export class TypedEventBus extends EventEmitter {
